@@ -40,7 +40,9 @@ export default function LoginPage() {
         <div>
           <p class="eyebrow">Assetar back office</p>
           <h1>Admin login</h1>
-          <p class="muted">Use your admin credentials to manage swaps and WhatsApp conversations.</p>
+          <p class="muted">
+            Use your admin credentials to manage swaps, gift card operations, provider health, and WhatsApp support.
+          </p>
         </div>
 
         <form class="stack" onSubmit={handleSubmit}>

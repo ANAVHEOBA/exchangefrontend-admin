@@ -1,27 +1,82 @@
 import { Title } from '@solidjs/meta';
 import { A, useParams } from '@solidjs/router';
-import { createResource, Show } from 'solid-js';
+import { createResource, createSignal, For, Show } from 'solid-js';
 import AdminShell from '~/components/admin/AdminShell';
 import { adminApi } from '~/api/endpoints/admin';
 import { useAdminAccess } from '~/hooks/useAdminAccess';
 import { formatAmount, formatDateTime, truncateMiddle } from '~/utils/format';
+import type { ApiError } from '~/types/api';
 
 export default function SwapDetailPage() {
   const params = useParams();
   const auth = useAdminAccess();
-  const [swap] = createResource(
+  const [actionState, setActionState] = createSignal<'refresh' | 'reconcile' | null>(null);
+  const [actionError, setActionError] = createSignal<string | null>(null);
+  const [actionMessage, setActionMessage] = createSignal<string | null>(null);
+  const [swap, { refetch }] = createResource(
     () => (auth.ready() ? params.id : null),
     (id) => adminApi.getSwap(id),
   );
+  const [timeline, { refetch: refetchTimeline }] = createResource(
+    () => (auth.ready() ? params.id : null),
+    (id) => adminApi.getSwapTimeline(id),
+  );
+
+  const runAction = async (action: 'refresh' | 'reconcile') => {
+    setActionState(action);
+    setActionError(null);
+    setActionMessage(null);
+
+    try {
+      const response =
+        action === 'refresh' ? await adminApi.refreshSwap(params.id) : await adminApi.reconcileSwap(params.id);
+      setActionMessage(response.message);
+      await Promise.all([refetch(), refetchTimeline()]);
+    } catch (rawError) {
+      const apiError = rawError as ApiError;
+      setActionError(apiError.message || 'Action failed.');
+    } finally {
+      setActionState(null);
+    }
+  };
 
   return (
-    <AdminShell title="Swap Detail">
+    <AdminShell
+      title="Swap detail"
+      subtitle="Inspect provider status, deposit state, payout state, and the recorded timeline."
+      actions={
+        <div class="actions-row">
+          <A class="button button-secondary" href="/swaps">
+            Back to swaps
+          </A>
+          <button
+            class="button button-secondary"
+            type="button"
+            disabled={actionState() !== null}
+            onClick={() => runAction('refresh')}
+          >
+            {actionState() === 'refresh' ? 'Refreshing…' : 'Refresh provider'}
+          </button>
+          <button
+            class="button button-primary"
+            type="button"
+            disabled={actionState() !== null}
+            onClick={() => runAction('reconcile')}
+          >
+            {actionState() === 'reconcile' ? 'Reconciling…' : 'Reconcile'}
+          </button>
+        </div>
+      }
+    >
       <Title>Swap Detail</Title>
 
       <section class="panel stack-gap">
-        <A class="button button-secondary" href="/swaps">
-          Back to swaps
-        </A>
+        <Show when={actionMessage()}>
+          {(message) => <div class="inline-success">{message()}</div>}
+        </Show>
+        <Show when={actionError()}>
+          {(message) => <div class="inline-error">{message()}</div>}
+        </Show>
 
         <Show when={!swap.loading} fallback={<div class="empty-state">Loading swap…</div>}>
           <Show when={swap()} fallback={<div class="empty-state">Swap not found.</div>}>
@@ -101,6 +156,33 @@ export default function SwapDetailPage() {
                     <dt>Error</dt>
                     <dd>{data().error || '—'}</dd>
                   </dl>
+                </div>
+
+                <div class="detail-card detail-card-wide">
+                  <div class="section-heading">
+                    <div>
+                      <p class="eyebrow">Timeline</p>
+                      <h3>Provider and system state changes</h3>
+                    </div>
+                  </div>
+
+                  <Show when={!timeline.loading} fallback={<div class="empty-state">Loading timeline…</div>}>
+                    <Show when={timeline()?.timeline.length} fallback={<div class="empty-state">No timeline events recorded yet.</div>}>
+                      <ol class="timeline-list">
+                        <For each={timeline()?.timeline || []}>
+                          {(event) => (
+                            <li class="timeline-item">
+                              <div class="timeline-item__status">
+                                <span class="status-chip">{event.status}</span>
+                                <strong>{formatDateTime(event.created_at)}</strong>
+                              </div>
+                              <p>{event.message || 'No provider message recorded.'}</p>
+                            </li>
+                          )}
+                        </For>
+                      </ol>
+                    </Show>
+                  </Show>
                 </div>
               </div>
             )}

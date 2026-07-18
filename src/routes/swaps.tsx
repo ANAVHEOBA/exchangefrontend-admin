@@ -1,8 +1,9 @@
 import { Title } from '@solidjs/meta';
 import { A, useSearchParams } from '@solidjs/router';
-import { createMemo, createResource, createSignal, For, Show } from 'solid-js';
+import { createMemo, For, Show, createSignal } from 'solid-js';
 import AdminShell from '~/components/admin/AdminShell';
 import { adminApi } from '~/api/endpoints/admin';
+import { adminDataKeys, createAdminCachedQuery } from '~/lib/admin-data';
 import { useAdminAccess } from '~/hooks/useAdminAccess';
 import { formatAmount, formatDateTime, truncateMiddle } from '~/utils/format';
 import type { ApiError } from '~/types/api';
@@ -20,12 +21,15 @@ export default function SwapsPage() {
     provider: searchParams.provider || undefined,
     from_currency: searchParams.from_currency || undefined,
     to_currency: searchParams.to_currency || undefined,
+    date_from: searchParams.date_from || undefined,
+    date_to: searchParams.date_to || undefined,
   }));
 
-  const [swaps, { refetch }] = createResource(
-    () => (auth.ready() ? JSON.stringify(query()) : null),
-    () => adminApi.listSwaps(query()),
-  );
+  const swaps = createAdminCachedQuery({
+    source: () => (auth.ready() ? query() : null),
+    getKey: (currentQuery) => adminDataKeys.swaps(currentQuery),
+    fetcher: (currentQuery) => adminApi.listSwaps(currentQuery),
+  });
 
   const updateFilter = (name: string, value: string) => {
     const next = { ...searchParams, [name]: value || undefined, cursor: undefined };
@@ -46,6 +50,8 @@ export default function SwapsPage() {
         provider: query().provider,
         from_currency: query().from_currency,
         to_currency: query().to_currency,
+        date_from: query().date_from,
+        date_to: query().date_to,
       });
 
       const url = window.URL.createObjectURL(blob);
@@ -63,26 +69,31 @@ export default function SwapsPage() {
   };
 
   return (
-    <AdminShell title="Swaps">
-      <Title>Swaps</Title>
+    <AdminShell
+      title="Swap operations"
+      subtitle="Review swap flow, refresh provider state, and export audit-ready history."
+      actions={
+        <div class="actions-row">
+          <button class="button button-secondary" type="button" onClick={() => void swaps.refetch()}>
+            {swaps.refreshing() ? 'Refreshing…' : 'Refresh'}
+          </button>
+          <button class="button button-primary" type="button" disabled={exporting()} onClick={downloadExport}>
+            {exporting() ? 'Exporting…' : 'Export CSV'}
+          </button>
+        </div>
+      }
+    >
+      <Title>Swap Operations</Title>
 
       <section class="panel stack-gap">
-        <div class="split-header">
+        <div class="section-heading">
           <div>
             <p class="eyebrow">Swap queue</p>
-            <h2>Review recent swap traffic</h2>
-          </div>
-          <div class="actions-row">
-            <button class="button button-secondary" type="button" onClick={() => refetch()}>
-              Refresh
-            </button>
-            <button class="button button-primary" type="button" disabled={exporting()} onClick={downloadExport}>
-              {exporting() ? 'Exporting…' : 'Export CSV'}
-            </button>
+            <h3>Filter recent swap traffic</h3>
           </div>
         </div>
 
-        <div class="filter-grid">
+        <div class="filter-grid filter-grid--wide">
           <label class="field">
             <span>Status</span>
             <input class="text-input" value={searchParams.status || ''} onInput={(event) => updateFilter('status', event.currentTarget.value)} />
@@ -99,6 +110,14 @@ export default function SwapsPage() {
             <span>To</span>
             <input class="text-input" value={searchParams.to_currency || ''} onInput={(event) => updateFilter('to_currency', event.currentTarget.value)} />
           </label>
+          <label class="field">
+            <span>Date from</span>
+            <input class="text-input" type="date" value={searchParams.date_from || ''} onInput={(event) => updateFilter('date_from', event.currentTarget.value)} />
+          </label>
+          <label class="field">
+            <span>Date to</span>
+            <input class="text-input" type="date" value={searchParams.date_to || ''} onInput={(event) => updateFilter('date_to', event.currentTarget.value)} />
+          </label>
         </div>
 
         <div class="actions-row">
@@ -113,8 +132,8 @@ export default function SwapsPage() {
 
       <section class="panel table-card">
         <Show when={auth.ready()}>
-          <Show when={!swaps.loading} fallback={<div class="empty-state">Loading swaps…</div>}>
-            <Show when={swaps()?.swaps?.length} fallback={<div class="empty-state">No swaps found for the current filters.</div>}>
+          <Show when={swaps.status() !== 'loading' || swaps.data()} fallback={<div class="empty-state">Loading swaps…</div>}>
+            <Show when={swaps.data()?.swaps?.length} fallback={<div class="empty-state">No swaps found for the current filters.</div>}>
               <div class="table-scroll">
                 <table class="data-table">
                   <thead>
@@ -125,11 +144,12 @@ export default function SwapsPage() {
                       <th>Amount</th>
                       <th>Est. receive</th>
                       <th>Provider</th>
+                      <th>Rate type</th>
                       <th>Created</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <For each={swaps()?.swaps || []}>
+                    <For each={swaps.data()?.swaps || []}>
                       {(swap) => (
                         <tr>
                           <td>
@@ -142,6 +162,7 @@ export default function SwapsPage() {
                           <td>{formatAmount(swap.amount)}</td>
                           <td>{formatAmount(swap.estimated_receive)}</td>
                           <td>{swap.provider}</td>
+                          <td>{swap.rate_type}</td>
                           <td>{formatDateTime(swap.created_at)}</td>
                         </tr>
                       )}
@@ -153,7 +174,7 @@ export default function SwapsPage() {
           </Show>
         </Show>
 
-        <Show when={swaps()?.pagination}>
+        <Show when={swaps.data()?.pagination}>
           {(pagination) => (
             <div class="actions-row spaced-top">
               <span class="muted">Page size: {pagination().limit}</span>
