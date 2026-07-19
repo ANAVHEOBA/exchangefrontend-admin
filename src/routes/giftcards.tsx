@@ -90,6 +90,10 @@ export default function GiftCardsPage() {
       </section>
 
       <section class="panel table-card">
+        <Show when={orders.error()}>
+          {(message) => <div class="empty-state">{message()}</div>}
+        </Show>
+
         <Show when={auth.ready()}>
           <Show when={orders.status() !== 'loading' || orders.data()} fallback={<div class="empty-state">Loading gift card orders…</div>}>
             <Show when={orders.data()?.orders.length} fallback={<div class="empty-state">No gift card orders matched the current filters.</div>}>

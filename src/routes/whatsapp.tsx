@@ -94,6 +94,10 @@ export default function WhatsAppPage() {
       </section>
 
       <section class="panel table-card">
+        <Show when={conversations.error()}>
+          {(message) => <div class="empty-state">{message()}</div>}
+        </Show>
+
         <Show when={auth.ready()}>
           <Show when={conversations.status() !== 'loading' || conversations.data()} fallback={<div class="empty-state">Loading conversations…</div>}>
             <Show when={conversations.data()?.conversations?.length} fallback={<div class="empty-state">No conversations matched the current filters.</div>}>

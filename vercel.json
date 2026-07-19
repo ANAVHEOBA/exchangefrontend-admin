@@ -1,0 +1,20 @@
+{
+  "rewrites": [
+    {
+      "source": "/ops/:path*",
+      "destination": "https://exchange-shared-production.up.railway.app/ops/:path*"
+    },
+    {
+      "source": "/swap/:path*",
+      "destination": "https://exchange-shared-production.up.railway.app/swap/:path*"
+    },
+    {
+      "source": "/giftcards/ops/:path*",
+      "destination": "https://exchange-shared-production.up.railway.app/giftcards/ops/:path*"
+    },
+    {
+      "source": "/whatsapp/ops/:path*",
+      "destination": "https://exchange-shared-production.up.railway.app/whatsapp/ops/:path*"
+    }
+  ]
+}

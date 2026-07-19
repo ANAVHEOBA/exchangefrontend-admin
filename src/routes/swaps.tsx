@@ -131,6 +131,10 @@ export default function SwapsPage() {
       </section>
 
       <section class="panel table-card">
+        <Show when={swaps.error()}>
+          {(message) => <div class="empty-state">{message()}</div>}
+        </Show>
+
         <Show when={auth.ready()}>
           <Show when={swaps.status() !== 'loading' || swaps.data()} fallback={<div class="empty-state">Loading swaps…</div>}>
             <Show when={swaps.data()?.swaps?.length} fallback={<div class="empty-state">No swaps found for the current filters.</div>}>

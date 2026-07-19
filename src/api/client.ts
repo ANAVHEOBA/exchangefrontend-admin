@@ -91,12 +91,11 @@ class ApiClient {
   }
 
   private buildRequestURL(endpoint: string, params?: Record<string, unknown>): string {
-    const url = new URL(
-      endpoint,
-      endpoint.startsWith('http://') || endpoint.startsWith('https://')
-        ? undefined
-        : API_CONFIG.baseURL,
-    );
+    const isAbsoluteEndpoint = endpoint.startsWith('http://') || endpoint.startsWith('https://');
+    const baseURL =
+      API_CONFIG.baseURL ||
+      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+    const url = new URL(endpoint, isAbsoluteEndpoint ? undefined : baseURL);
 
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
