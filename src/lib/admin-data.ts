@@ -8,15 +8,23 @@ import type {
   AdminGiftCardOrderQuery,
   AdminSwapHistoryResponse,
   AdminSwapQuery,
+  OpsAssetListResponse,
+  OpsAssetQuery,
   OpsFinanceQuery,
   OpsFinanceResponse,
+  OpsGiftCardCatalogQuery,
+  OpsGiftCardCatalogResponse,
   OpsHealthResponse,
+  OpsProviderListQuery,
+  OpsProviderListResponse,
   OpsSearchQuery,
   OpsSearchResponse,
+  OpsSettingsResponse,
   OpsWebhookMonitorResponse,
+  OpsWebhookQuery,
 } from '~/types/admin';
 
-const CACHE_PREFIX = 'assetar-admin-cache/v1:';
+const CACHE_PREFIX = 'assetar-admin-cache/v2:';
 const DEFAULT_TTL_MS = 30_000;
 const inflightAdminRequests = new Map<string, Promise<unknown>>();
 
@@ -24,6 +32,10 @@ const DEFAULT_SWAP_QUERY: AdminSwapQuery = { limit: 20 };
 const DEFAULT_GIFTCARD_QUERY: AdminGiftCardOrderQuery = { limit: 50 };
 const DEFAULT_WHATSAPP_QUERY: AdminConversationQuery = { page: 1, limit: 20 };
 const DEFAULT_FINANCE_QUERY: OpsFinanceQuery = {};
+const DEFAULT_WEBHOOK_QUERY: OpsWebhookQuery = { limit: 25 };
+const DEFAULT_ASSET_QUERY: OpsAssetQuery = { limit: 30, active_only: true };
+const DEFAULT_PROVIDER_QUERY: OpsProviderListQuery = { limit: 25, active_only: true };
+const DEFAULT_CATALOG_QUERY: OpsGiftCardCatalogQuery = { limit: 24 };
 
 let lastPrewarmAt = 0;
 
@@ -46,13 +58,17 @@ export const adminDataKeys = {
   dashboard: () => buildCacheKey('dashboard'),
   health: () => buildCacheKey('health'),
   finance: (query: OpsFinanceQuery = DEFAULT_FINANCE_QUERY) => buildCacheKey('finance', query),
-  webhooks: () => buildCacheKey('webhooks'),
+  webhooks: (query: OpsWebhookQuery = DEFAULT_WEBHOOK_QUERY) => buildCacheKey('webhooks', query),
   swaps: (query: AdminSwapQuery = DEFAULT_SWAP_QUERY) => buildCacheKey('swaps', query),
   giftcards: (query: AdminGiftCardOrderQuery = DEFAULT_GIFTCARD_QUERY) =>
     buildCacheKey('giftcards', query),
   whatsapp: (query: AdminConversationQuery = DEFAULT_WHATSAPP_QUERY) =>
     buildCacheKey('whatsapp', query),
   search: (query: OpsSearchQuery) => buildCacheKey('search', query),
+  assets: (query: OpsAssetQuery = DEFAULT_ASSET_QUERY) => buildCacheKey('assets', query),
+  providers: (query: OpsProviderListQuery = DEFAULT_PROVIDER_QUERY) => buildCacheKey('providers', query),
+  catalog: (query: OpsGiftCardCatalogQuery = DEFAULT_CATALOG_QUERY) => buildCacheKey('catalog', query),
+  settings: () => buildCacheKey('settings'),
 } as const;
 
 export function readCachedAdminValue<T>(key: string, ttlMs: number = DEFAULT_TTL_MS): T | null {
@@ -160,8 +176,9 @@ export function scheduleAdminPrewarm() {
         adminDataKeys.finance(DEFAULT_FINANCE_QUERY),
         () => adminApi.getFinance(DEFAULT_FINANCE_QUERY),
       ),
-      prefetchAdminValue<OpsWebhookMonitorResponse>(adminDataKeys.webhooks(), () =>
-        adminApi.getWebhookMonitor(),
+      prefetchAdminValue<OpsWebhookMonitorResponse>(
+        adminDataKeys.webhooks(DEFAULT_WEBHOOK_QUERY),
+        () => adminApi.getWebhookMonitor(DEFAULT_WEBHOOK_QUERY),
       ),
       prefetchAdminValue<AdminSwapHistoryResponse>(
         adminDataKeys.swaps(DEFAULT_SWAP_QUERY),
@@ -175,6 +192,19 @@ export function scheduleAdminPrewarm() {
         adminDataKeys.whatsapp(DEFAULT_WHATSAPP_QUERY),
         () => adminApi.listConversations(DEFAULT_WHATSAPP_QUERY),
       ),
+      prefetchAdminValue<OpsAssetListResponse>(
+        adminDataKeys.assets(DEFAULT_ASSET_QUERY),
+        () => adminApi.listAssets(DEFAULT_ASSET_QUERY),
+      ),
+      prefetchAdminValue<OpsProviderListResponse>(
+        adminDataKeys.providers(DEFAULT_PROVIDER_QUERY),
+        () => adminApi.listProviders(DEFAULT_PROVIDER_QUERY),
+      ),
+      prefetchAdminValue<OpsGiftCardCatalogResponse>(
+        adminDataKeys.catalog(DEFAULT_CATALOG_QUERY),
+        () => adminApi.listGiftcardCatalog(DEFAULT_CATALOG_QUERY),
+      ),
+      prefetchAdminValue<OpsSettingsResponse>(adminDataKeys.settings(), () => adminApi.getSettings()),
     ]);
   });
 }
@@ -274,4 +304,8 @@ export const adminDefaultQueries = {
   swaps: DEFAULT_SWAP_QUERY,
   giftcards: DEFAULT_GIFTCARD_QUERY,
   whatsapp: DEFAULT_WHATSAPP_QUERY,
+  webhooks: DEFAULT_WEBHOOK_QUERY,
+  assets: DEFAULT_ASSET_QUERY,
+  providers: DEFAULT_PROVIDER_QUERY,
+  catalog: DEFAULT_CATALOG_QUERY,
 } as const;

@@ -1,0 +1,10 @@
+node_modules
+dist
+.output
+.nitro
+.vinxi
+.vercel
+.pnpm-store
+.wrangler
+.netlify
+.DS_Store

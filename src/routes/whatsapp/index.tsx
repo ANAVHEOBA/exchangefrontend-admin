@@ -27,6 +27,24 @@ export default function WhatsAppPage() {
     fetcher: (currentQuery) => adminApi.listConversations(currentQuery),
   });
 
+
+  const conversationFilterOptions = createMemo(() => {
+    const rows = conversations.data()?.conversations || [];
+    const collect = (selector: (row: (typeof rows)[number]) => string) =>
+      Array.from(new Set(rows.map(selector).map((value) => value.trim()).filter(Boolean))).sort((left, right) =>
+        left.localeCompare(right),
+      );
+    const ensureCurrent = (values: string[], current?: string) =>
+      current && current.trim() && !values.includes(current) ? [current, ...values] : values;
+
+    return {
+      adminStatuses: ensureCurrent(collect((row) => row.admin_status), searchParams.admin_status || undefined),
+      adminTags: ensureCurrent(collect((row) => row.admin_tag || ''), searchParams.admin_tag || undefined),
+      assignees: ensureCurrent(collect((row) => row.assigned_to || ''), searchParams.assigned_to || undefined),
+      states: ensureCurrent(collect((row) => row.state), searchParams.state || undefined),
+    };
+  });
+
   const updateFilter = (name: string, value: string) => {
     setSearchParams({ ...searchParams, [name]: value || undefined, page: '1' });
   };
@@ -66,19 +84,31 @@ export default function WhatsAppPage() {
         <div class="filter-grid filter-grid--wide">
           <label class="field">
             <span>Admin status</span>
-            <input class="text-input" value={searchParams.admin_status || ''} onInput={(event) => updateFilter('admin_status', event.currentTarget.value)} />
+            <select class="text-input select-input" value={searchParams.admin_status || ''} onChange={(event) => updateFilter('admin_status', event.currentTarget.value)}>
+              <option value="">All statuses</option>
+              <For each={conversationFilterOptions().adminStatuses}>{(value) => <option value={value}>{value}</option>}</For>
+            </select>
           </label>
           <label class="field">
             <span>Admin tag</span>
-            <input class="text-input" value={searchParams.admin_tag || ''} onInput={(event) => updateFilter('admin_tag', event.currentTarget.value)} />
+            <select class="text-input select-input" value={searchParams.admin_tag || ''} onChange={(event) => updateFilter('admin_tag', event.currentTarget.value)}>
+              <option value="">All tags</option>
+              <For each={conversationFilterOptions().adminTags}>{(value) => <option value={value}>{value}</option>}</For>
+            </select>
           </label>
           <label class="field">
             <span>Assigned to</span>
-            <input class="text-input" value={searchParams.assigned_to || ''} onInput={(event) => updateFilter('assigned_to', event.currentTarget.value)} />
+            <select class="text-input select-input" value={searchParams.assigned_to || ''} onChange={(event) => updateFilter('assigned_to', event.currentTarget.value)}>
+              <option value="">All assignees</option>
+              <For each={conversationFilterOptions().assignees}>{(value) => <option value={value}>{value}</option>}</For>
+            </select>
           </label>
           <label class="field">
             <span>State</span>
-            <input class="text-input" value={searchParams.state || ''} onInput={(event) => updateFilter('state', event.currentTarget.value)} />
+            <select class="text-input select-input" value={searchParams.state || ''} onChange={(event) => updateFilter('state', event.currentTarget.value)}>
+              <option value="">All states</option>
+              <For each={conversationFilterOptions().states}>{(value) => <option value={value}>{value}</option>}</For>
+            </select>
           </label>
           <label class="field">
             <span>WA ID</span>

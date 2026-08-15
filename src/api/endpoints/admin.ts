@@ -3,8 +3,8 @@ import { API_CONFIG } from '~/config/api';
 import type {
   AdminConversationDetailResponse,
   AdminConversationListResponse,
-  AdminDashboardResponse,
   AdminConversationQuery,
+  AdminDashboardResponse,
   AdminGiftCardActionResponse,
   AdminGiftCardOrderDetailResponse,
   AdminGiftCardOrderListResponse,
@@ -17,14 +17,30 @@ import type {
   AdminSwapExportQuery,
   AdminSwapHistoryResponse,
   AdminSwapQuery,
+  OpsAssetDetailResponse,
+  OpsAssetListResponse,
+  OpsAssetQuery,
+  OpsAssetValidateRequest,
+  OpsAssetValidateResponse,
   OpsCreateNoteRequest,
   OpsFinanceQuery,
   OpsFinanceResponse,
+  OpsGiftCardCatalogDetailResponse,
+  OpsGiftCardCatalogQuery,
+  OpsGiftCardCatalogResponse,
   OpsHealthResponse,
   OpsNoteResponse,
+  OpsProviderDetailResponse,
+  OpsProviderListQuery,
+  OpsProviderListResponse,
   OpsSearchQuery,
   OpsSearchResponse,
+  OpsSettingsDiagnosticsResponse,
+  OpsSettingsResponse,
+  OpsSyncResponse,
+  OpsWebhookDetailResponse,
   OpsWebhookMonitorResponse,
+  OpsWebhookQuery,
   StoredAdminSession,
   SwapOpsActionResponse,
   SwapStatusResponse,
@@ -66,11 +82,15 @@ export const adminApi = {
   },
 
   getOverview(): Promise<AdminOverviewResponse> {
-    return apiClient.withRetry(() => apiClient.get<AdminOverviewResponse>(API_CONFIG.endpoints.adminOverview));
+    return apiClient.withRetry(() =>
+      apiClient.get<AdminOverviewResponse>(API_CONFIG.endpoints.adminOverview),
+    );
   },
 
   search(query: OpsSearchQuery): Promise<OpsSearchResponse> {
-    return apiClient.withRetry(() => apiClient.get<OpsSearchResponse>(API_CONFIG.endpoints.adminSearch, query));
+    return apiClient.withRetry(() =>
+      apiClient.get<OpsSearchResponse>(API_CONFIG.endpoints.adminSearch, query),
+    );
   },
 
   getHealth(): Promise<OpsHealthResponse> {
@@ -78,12 +98,91 @@ export const adminApi = {
   },
 
   getFinance(query: OpsFinanceQuery): Promise<OpsFinanceResponse> {
-    return apiClient.withRetry(() => apiClient.get<OpsFinanceResponse>(API_CONFIG.endpoints.adminFinance, query));
+    return apiClient.withRetry(() =>
+      apiClient.get<OpsFinanceResponse>(API_CONFIG.endpoints.adminFinance, query),
+    );
   },
 
-  getWebhookMonitor(): Promise<OpsWebhookMonitorResponse> {
+  getWebhookMonitor(query?: OpsWebhookQuery): Promise<OpsWebhookMonitorResponse> {
     return apiClient.withRetry(() =>
-      apiClient.get<OpsWebhookMonitorResponse>(API_CONFIG.endpoints.adminWebhooks),
+      apiClient.get<OpsWebhookMonitorResponse>(API_CONFIG.endpoints.adminWebhooks, query),
+    );
+  },
+
+  getWebhookDelivery(deliveryId: string): Promise<OpsWebhookDetailResponse> {
+    return apiClient.withRetry(() =>
+      apiClient.get<OpsWebhookDetailResponse>(
+        `${API_CONFIG.endpoints.adminWebhooks}/${encodeURIComponent(deliveryId)}`,
+      ),
+    );
+  },
+
+  listAssets(query: OpsAssetQuery): Promise<OpsAssetListResponse> {
+    return apiClient.withRetry(() =>
+      apiClient.get<OpsAssetListResponse>(API_CONFIG.endpoints.adminAssets, query),
+    );
+  },
+
+  getAssetDetail(ticker: string, network: string): Promise<OpsAssetDetailResponse> {
+    return apiClient.withRetry(() =>
+      apiClient.get<OpsAssetDetailResponse>(
+        `${API_CONFIG.endpoints.adminAssets}/${encodeURIComponent(ticker)}`,
+        { network },
+      ),
+    );
+  },
+
+  syncAssets(): Promise<OpsSyncResponse> {
+    return apiClient.post<OpsSyncResponse>(API_CONFIG.endpoints.adminAssetSync);
+  },
+
+  validateAssetAddress(request: OpsAssetValidateRequest): Promise<OpsAssetValidateResponse> {
+    return apiClient.post<OpsAssetValidateResponse>(API_CONFIG.endpoints.adminAssetValidate, request);
+  },
+
+  listGiftcardCatalog(query: OpsGiftCardCatalogQuery): Promise<OpsGiftCardCatalogResponse> {
+    return apiClient.withRetry(() =>
+      apiClient.get<OpsGiftCardCatalogResponse>(API_CONFIG.endpoints.adminCatalog, query),
+    );
+  },
+
+  getGiftcardCatalogItem(
+    productId: string,
+    query?: Pick<OpsGiftCardCatalogQuery, 'country'>,
+  ): Promise<OpsGiftCardCatalogDetailResponse> {
+    return apiClient.withRetry(() =>
+      apiClient.get<OpsGiftCardCatalogDetailResponse>(
+        `${API_CONFIG.endpoints.adminCatalog}/${encodeURIComponent(productId)}`,
+        query,
+      ),
+    );
+  },
+
+  listProviders(query: OpsProviderListQuery): Promise<OpsProviderListResponse> {
+    return apiClient.withRetry(() =>
+      apiClient.get<OpsProviderListResponse>(API_CONFIG.endpoints.adminProviders, query),
+    );
+  },
+
+  getProviderDetail(providerId: string): Promise<OpsProviderDetailResponse> {
+    return apiClient.withRetry(() =>
+      apiClient.get<OpsProviderDetailResponse>(
+        `${API_CONFIG.endpoints.adminProviders}/${encodeURIComponent(providerId)}`,
+      ),
+    );
+  },
+
+  syncProviders(): Promise<OpsSyncResponse> {
+    return apiClient.post<OpsSyncResponse>(API_CONFIG.endpoints.adminProviderSync);
+  },
+
+  getSettings(): Promise<OpsSettingsResponse> {
+    return apiClient.withRetry(() => apiClient.get<OpsSettingsResponse>(API_CONFIG.endpoints.adminSettings));
+  },
+
+  getSettingsDiagnostics(): Promise<OpsSettingsDiagnosticsResponse> {
+    return apiClient.withRetry(() =>
+      apiClient.get<OpsSettingsDiagnosticsResponse>(API_CONFIG.endpoints.adminSettingsDiagnostics),
     );
   },
 
@@ -92,12 +191,16 @@ export const adminApi = {
   },
 
   listSwaps(query: AdminSwapQuery): Promise<AdminSwapHistoryResponse> {
-    return apiClient.withRetry(() => apiClient.get<AdminSwapHistoryResponse>(API_CONFIG.endpoints.adminSwaps, query));
+    return apiClient.withRetry(() =>
+      apiClient.get<AdminSwapHistoryResponse>(API_CONFIG.endpoints.adminSwaps, query),
+    );
   },
 
   getSwap(id: string): Promise<SwapStatusResponse> {
     return apiClient.withRetry(() =>
-      apiClient.get<SwapStatusResponse>(`${API_CONFIG.endpoints.adminSwapDetail}/${encodeURIComponent(id)}`),
+      apiClient.get<SwapStatusResponse>(
+        `${API_CONFIG.endpoints.adminSwapDetail}/${encodeURIComponent(id)}`,
+      ),
     );
   },
 

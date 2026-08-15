@@ -1,11 +1,12 @@
 import { Title } from '@solidjs/meta';
 import { A, useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
-import AdminShell from '~/components/admin/AdminShell';
 import { adminApi } from '~/api/endpoints/admin';
-import { adminDataKeys, createAdminCachedQuery } from '~/lib/admin-data';
+import AdminShell from '~/components/admin/AdminShell';
+import { StatusChip } from '~/components/admin/AdminUI';
 import { useAdminAccess } from '~/hooks/useAdminAccess';
-import { formatAmount, formatDateTime, truncateMiddle } from '~/utils/format';
+import { adminDataKeys, createAdminCachedQuery } from '~/lib/admin-data';
+import { formatAmount, formatDateTime, formatPair, truncateMiddle } from '~/utils/format';
 
 export default function SearchPage() {
   const auth = useAdminAccess();
@@ -22,7 +23,6 @@ export default function SearchPage() {
     }
 
     const search = searchParams.q?.trim();
-
     if (!search) {
       return null;
     }
@@ -41,12 +41,8 @@ export default function SearchPage() {
 
   const handleSubmit = (event: SubmitEvent) => {
     event.preventDefault();
-    const q = draft().trim();
-
-    setSearchParams({
-      q: q || undefined,
-      limit: searchParams.limit || '10',
-    });
+    const next = draft().trim();
+    setSearchParams({ q: next || undefined, limit: searchParams.limit || '10' });
   };
 
   return (
@@ -65,7 +61,7 @@ export default function SearchPage() {
         <div class="section-heading">
           <div>
             <p class="eyebrow">Admin search</p>
-            <h3>Find swaps, gift cards, and support threads fast</h3>
+            <h3>Find swaps, gift cards, and support threads</h3>
           </div>
         </div>
 
@@ -76,14 +72,8 @@ export default function SearchPage() {
             onInput={(event) => setDraft(event.currentTarget.value)}
             placeholder="Search by email, tx hash, wallet, provider ID, or Assetar ID"
           />
-          <button class="button button-primary" type="submit">
-            Search
-          </button>
+          <button class="button button-primary" type="submit">Search</button>
         </form>
-
-        <p class="muted">
-          Common lookups: client ID, gift card trade ID, provider swap ID, recipient email, deposit address, and tx hash.
-        </p>
       </section>
 
       <Show when={!searchParams.q}>
@@ -93,80 +83,131 @@ export default function SearchPage() {
       <Show when={searchParams.q}>
         <Show when={results.status() !== 'loading' || results.data()} fallback={<section class="panel">Searching…</section>}>
           <div class="page-stack">
-            <section class="panel">
+            <section class="panel stack-gap">
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Swaps</p>
                   <h3>{results.data()?.swaps.length || 0} matches</h3>
                 </div>
               </div>
-
               <Show when={results.data()?.swaps.length} fallback={<div class="empty-state">No swap matches.</div>}>
-                <div class="result-grid">
-                  <For each={results.data()?.swaps || []}>
-                    {(swap) => (
-                      <A class="list-card list-card--link" href={`/swaps/${swap.id}`}>
-                        <div class="list-card__head">
-                          <strong>{swap.from_currency}/{swap.to_currency}</strong>
-                          <span class="status-chip">{swap.status}</span>
-                        </div>
-                        <p>{swap.provider} · {formatAmount(swap.amount)} → {formatAmount(swap.estimated_receive)}</p>
-                        <small>{truncateMiddle(swap.id, 6)} · {formatDateTime(swap.updated_at)}</small>
-                      </A>
-                    )}
-                  </For>
+                <div class="table-scroll">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Swap</th>
+                        <th>Status</th>
+                        <th>Pair</th>
+                        <th>Provider</th>
+                        <th>Amount</th>
+                        <th>Updated</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <For each={results.data()?.swaps || []}>
+                        {(swap) => (
+                          <tr>
+                            <td>
+                              <A class="table-link mono" href={`/swaps?selected=${encodeURIComponent(swap.id)}`}>
+                                {truncateMiddle(swap.id, 7)}
+                              </A>
+                            </td>
+                            <td><StatusChip status={swap.status} /></td>
+                            <td>{formatPair(swap.from_currency, swap.from_network, swap.to_currency, swap.to_network)}</td>
+                            <td>{swap.provider}</td>
+                            <td>{formatAmount(swap.amount, 6)} {swap.from_currency}</td>
+                            <td>{formatDateTime(swap.updated_at)}</td>
+                          </tr>
+                        )}
+                      </For>
+                    </tbody>
+                  </table>
                 </div>
               </Show>
             </section>
 
-            <section class="panel">
+            <section class="panel stack-gap">
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Gift cards</p>
                   <h3>{results.data()?.giftcards.length || 0} matches</h3>
                 </div>
               </div>
-
               <Show when={results.data()?.giftcards.length} fallback={<div class="empty-state">No gift card matches.</div>}>
-                <div class="result-grid">
-                  <For each={results.data()?.giftcards || []}>
-                    {(order) => (
-                      <A class="list-card list-card--link" href={`/giftcards/${order.id}`}>
-                        <div class="list-card__head">
-                          <strong>{order.product_id || order.prepaid_provider || 'Gift card order'}</strong>
-                          <span class="status-chip">{order.status}</span>
-                        </div>
-                        <p>{order.recipient_email_masked} · {order.source_ticker} on {order.source_network}</p>
-                        <small>{truncateMiddle(order.id, 6)} · {formatDateTime(order.updated_at)}</small>
-                      </A>
-                    )}
-                  </For>
+                <div class="table-scroll">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Order</th>
+                        <th>Status</th>
+                        <th>Product</th>
+                        <th>Email</th>
+                        <th>Source</th>
+                        <th>Updated</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <For each={results.data()?.giftcards || []}>
+                        {(order) => (
+                          <tr>
+                            <td>
+                              <A class="table-link mono" href={`/giftcards?selected=${encodeURIComponent(order.id)}`}>
+                                {truncateMiddle(order.id, 7)}
+                              </A>
+                            </td>
+                            <td><StatusChip status={order.status} /></td>
+                            <td>{order.product_id || order.prepaid_provider || order.order_kind}</td>
+                            <td>{order.recipient_email_masked}</td>
+                            <td>{order.source_ticker} · {order.source_network}</td>
+                            <td>{formatDateTime(order.updated_at)}</td>
+                          </tr>
+                        )}
+                      </For>
+                    </tbody>
+                  </table>
                 </div>
               </Show>
             </section>
 
-            <section class="panel">
+            <section class="panel stack-gap">
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Support</p>
                   <h3>{results.data()?.support.length || 0} matches</h3>
                 </div>
               </div>
-
               <Show when={results.data()?.support.length} fallback={<div class="empty-state">No support matches.</div>}>
-                <div class="result-grid">
-                  <For each={results.data()?.support || []}>
-                    {(item) => (
-                      <A class="list-card list-card--link" href={`/whatsapp/${item.wa_id}`}>
-                        <div class="list-card__head">
-                          <strong>{truncateMiddle(item.wa_id, 7)}</strong>
-                          <span class="status-chip">{item.status}</span>
-                        </div>
-                        <p>{item.state} · {item.assigned_to || 'Unassigned'}</p>
-                        <small>{item.tag || 'No tag'} · {formatDateTime(item.updated_at)}</small>
-                      </A>
-                    )}
-                  </For>
+                <div class="table-scroll">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Conversation</th>
+                        <th>Status</th>
+                        <th>State</th>
+                        <th>Assigned</th>
+                        <th>Tag</th>
+                        <th>Updated</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <For each={results.data()?.support || []}>
+                        {(item) => (
+                          <tr>
+                            <td>
+                              <A class="table-link mono" href={`/whatsapp/${item.wa_id}`}>
+                                {truncateMiddle(item.wa_id, 7)}
+                              </A>
+                            </td>
+                            <td><StatusChip status={item.status} /></td>
+                            <td>{item.state}</td>
+                            <td>{item.assigned_to || 'Unassigned'}</td>
+                            <td>{item.tag || '—'}</td>
+                            <td>{formatDateTime(item.updated_at)}</td>
+                          </tr>
+                        )}
+                      </For>
+                    </tbody>
+                  </table>
                 </div>
               </Show>
             </section>

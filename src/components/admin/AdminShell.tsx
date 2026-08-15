@@ -1,11 +1,25 @@
 import { A, useLocation } from '@solidjs/router';
-import { Show, children, createEffect, createMemo, createSignal, type JSX } from 'solid-js';
+import { For, Show, createEffect, createMemo, createSignal, type JSX } from 'solid-js';
 import { scheduleAdminPrewarm } from '~/lib/admin-data';
 import { useAdminAccess } from '~/hooks/useAdminAccess';
 
+type NavIcon =
+  | 'overview'
+  | 'search'
+  | 'health'
+  | 'finance'
+  | 'webhooks'
+  | 'swaps'
+  | 'giftcards'
+  | 'whatsapp'
+  | 'assets'
+  | 'catalog'
+  | 'providers'
+  | 'settings';
+
 type NavItem = {
   href: string;
-  icon: 'overview' | 'search' | 'health' | 'finance' | 'webhooks' | 'swaps' | 'giftcards' | 'whatsapp';
+  icon: NavIcon;
   label: string;
   hint: string;
 };
@@ -19,24 +33,28 @@ const navGroups: NavGroup[] = [
   {
     label: 'Operations',
     items: [
-      { href: '/', icon: 'overview', label: 'Overview', hint: 'Queues, pressure, and support load' },
-      { href: '/search', icon: 'search', label: 'Global Search', hint: 'Find swaps, gift cards, and support threads' },
-      { href: '/health', icon: 'health', label: 'Provider Health', hint: 'Failures, latency, and risk flags' },
-      { href: '/finance', icon: 'finance', label: 'Finance', hint: 'Volume, fees, and daily reporting' },
-      { href: '/webhooks', icon: 'webhooks', label: 'Webhooks', hint: 'Retry backlog and dead letters' },
+      { href: '/', icon: 'overview', label: 'Overview', hint: 'KPIs, live activity, and queue pressure' },
+      { href: '/search', icon: 'search', label: 'Global Search', hint: 'Find by ID, email, wallet, or tx hash' },
+      { href: '/health', icon: 'health', label: 'Provider Health', hint: 'Workers, failures, and risk flags' },
+      { href: '/finance', icon: 'finance', label: 'Finance', hint: 'Volume, fees, and daily slices' },
+      { href: '/webhooks', icon: 'webhooks', label: 'Webhooks', hint: 'Delivery history, retries, and payloads' },
+      { href: '/settings', icon: 'settings', label: 'Settings', hint: 'Runtime config and diagnostics' },
     ],
   },
   {
     label: 'Trading',
     items: [
-      { href: '/swaps', icon: 'swaps', label: 'Swaps', hint: 'Monitor quotes, deposits, and payouts' },
-      { href: '/giftcards', icon: 'giftcards', label: 'Gift Cards', hint: 'Orders, retries, locks, and delivery state' },
+      { href: '/swaps', icon: 'swaps', label: 'Swaps', hint: 'Quotes, deposits, payouts, and timelines' },
+      { href: '/giftcards', icon: 'giftcards', label: 'Gift Card Orders', hint: 'Retries, locks, delivery, and reveal audit' },
+      { href: '/assets', icon: 'assets', label: 'Coins & Assets', hint: 'Networks, limits, and address validation' },
+      { href: '/catalog', icon: 'catalog', label: 'Gift Card Catalog', hint: 'Product metadata, limits, and country coverage' },
+      { href: '/providers', icon: 'providers', label: 'Providers', hint: 'KYC posture, routing volume, and top pairs' },
     ],
   },
   {
     label: 'Support',
     items: [
-      { href: '/whatsapp', icon: 'whatsapp', label: 'WhatsApp', hint: 'Inbox, assignment, and admin notes' },
+      { href: '/whatsapp', icon: 'whatsapp', label: 'WhatsApp', hint: 'Inbox, assignment, notes, and related swaps' },
     ],
   },
 ];
@@ -48,7 +66,7 @@ type AdminShellProps = {
   children: JSX.Element;
 };
 
-function SidebarIcon(props: { name: NavItem['icon'] }) {
+function SidebarIcon(props: { name: NavIcon }) {
   switch (props.name) {
     case 'overview':
       return (
@@ -107,6 +125,46 @@ function SidebarIcon(props: { name: NavItem['icon'] }) {
           <path d="M12.6 6a1.8 1.8 0 1 0 0-3.6C10.9 2.4 10 4 10 6" />
         </svg>
       );
+    case 'assets':
+      return (
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 4h8" />
+          <path d="M4 8h12" />
+          <path d="M6 12h8" />
+          <path d="M8 16h4" />
+        </svg>
+      );
+    case 'catalog':
+      return (
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="14" height="12" rx="1.8" />
+          <path d="M7 4v12" />
+          <path d="M7 8h10" />
+        </svg>
+      );
+    case 'providers':
+      return (
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 15.5h12" />
+          <path d="M6 15.5V8.8" />
+          <path d="M10 15.5V5.8" />
+          <path d="M14 15.5V10.8" />
+        </svg>
+      );
+    case 'settings':
+      return (
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="10" cy="10" r="2.4" />
+          <path d="M10 3.3v1.5" />
+          <path d="M10 15.2v1.5" />
+          <path d="M15.2 10h1.5" />
+          <path d="M3.3 10h1.5" />
+          <path d="M14 6l1-1" />
+          <path d="M5 15l1-1" />
+          <path d="M14 14l1 1" />
+          <path d="M5 5l1 1" />
+        </svg>
+      );
     case 'whatsapp':
       return (
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -121,20 +179,7 @@ export default function AdminShell(props: AdminShellProps) {
   const location = useLocation();
   const auth = useAdminAccess();
   const [sidebarOpen, setSidebarOpen] = createSignal(false);
-  const subtitle = createMemo(() => props.subtitle);
-  const actions = children(() => props.actions);
-  const hasActions = createMemo(() => actions.toArray().length > 0);
-
-  const apiHost = createMemo(() => {
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-
-    try {
-      const url = new URL(base);
-      return url.hostname === 'localhost' ? 'Local backend' : url.hostname;
-    } catch {
-      return base;
-    }
-  });
+  const actions = createMemo(() => props.actions);
 
   createEffect(() => {
     if (auth.ready()) {
@@ -160,7 +205,7 @@ export default function AdminShell(props: AdminShellProps) {
                 <div class="ops-brand-mark">A</div>
                 <div class="ops-brand-copy">
                   <h1>Assetar</h1>
-                  <p>Operations Console</p>
+                  <p>Back Office</p>
                 </div>
               </div>
 
@@ -180,35 +225,37 @@ export default function AdminShell(props: AdminShellProps) {
               </div>
               <div class="ops-sidebar__summary-copy">
                 <strong>{auth.adminEmail()}</strong>
-                <span>{apiHost()}</span>
               </div>
             </section>
 
             <nav class="ops-nav" aria-label="Admin navigation">
-              {navGroups.map((group) => (
-                <div class="ops-nav__group">
-                  <p class="ops-nav__label">{group.label}</p>
-
-                  {group.items.map((item) => (
-                    <A
-                      href={item.href}
-                      end={item.href === '/'}
-                      class={`ops-nav__item${isActive(item.href) ? ' active' : ''}`}
-                      onClick={() => setSidebarOpen(false)}
-                    >
-                      <span class="ops-nav__item-main">
-                        <span class="ops-nav__icon" aria-hidden="true">
-                          <SidebarIcon name={item.icon} />
-                        </span>
-                        <span class="ops-nav__text">
-                          <span>{item.label}</span>
-                          <small>{item.hint}</small>
-                        </span>
-                      </span>
-                    </A>
-                  ))}
-                </div>
-              ))}
+              <For each={navGroups}>
+                {(group) => (
+                  <div class="ops-nav__group">
+                    <p class="ops-nav__label">{group.label}</p>
+                    <For each={group.items}>
+                      {(item) => (
+                        <A
+                          href={item.href}
+                          end={item.href === '/'}
+                          class={`ops-nav__item${isActive(item.href) ? ' active' : ''}`}
+                          onClick={() => setSidebarOpen(false)}
+                        >
+                          <span class="ops-nav__item-main">
+                            <span class="ops-nav__icon" aria-hidden="true">
+                              <SidebarIcon name={item.icon} />
+                            </span>
+                            <span class="ops-nav__text">
+                              <span>{item.label}</span>
+                              <small>{item.hint}</small>
+                            </span>
+                          </span>
+                        </A>
+                      )}
+                    </For>
+                  </div>
+                )}
+              </For>
             </nav>
 
             <div class="ops-sidebar__footer">
@@ -235,10 +282,12 @@ export default function AdminShell(props: AdminShellProps) {
             <div class="ops-topbar__copy">
               <p class="eyebrow">Assetar back office</p>
               <h2>{props.title}</h2>
-              {subtitle() ? <p class="muted">{subtitle()}</p> : null}
+              <Show when={props.subtitle}>
+                <p class="muted">{props.subtitle}</p>
+              </Show>
             </div>
 
-            <Show when={hasActions()}>
+            <Show when={actions()}>
               <div class="ops-topbar__actions">{actions()}</div>
             </Show>
           </header>
